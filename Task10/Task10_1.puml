@@ -1,0 +1,41 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram - Кластер Cassandra (упрощенная схема)
+
+Container(app_services, "Микросервисы", "Go/Java/Node.js", "Корзины, сессии, архив заказов")
+
+
+System_Boundary(coordinator_layer, "Coordinator Layer") {
+    Component(coordinator, "Cassandra Coordinators", "3 узла", "Маршрутизация CQL запросов")
+}
+
+
+System_Boundary(main_ring, "Main Ring (основное кольцо данных)") {
+
+    System_Boundary(dc_moscow, "Data Center - Moscow") {
+        ComponentDb(moscow_node, "Moscow Nodes", "Cassandra", "3 узла, активные данные (корзины, сессии)")
+    }
+
+    System_Boundary(dc_Peterburg, "Data Center - Peterburg") {
+        ComponentDb(Peterburg_node, "Peterburg Nodes", "Cassandra", "3 узла, кросс-DC реплика")
+    }
+}
+
+
+System_Boundary(archive_ring, "Archive Ring") {
+    ComponentDb(archive, "Archive Nodes", "Cassandra", "3 узла, история заказов, аналитика")
+}
+
+
+Rel(app_services, coordinator, "CQL запросы", "Native protocol")
+
+Rel(coordinator, moscow_node, "Запись/чтение", "Consistent hashing")
+Rel(coordinator, Peterburg_node, "Кросс-DC операции", "Consistent hashing")
+Rel(coordinator, archive, "Архивные операции", "CQL")
+
+Rel(moscow_node, Peterburg_node, "Асинхронная репликация", "NetworkTopologyStrategy")
+
+Rel(archive, archive, "Репликация", "Quorum writes")
+
+@enduml
