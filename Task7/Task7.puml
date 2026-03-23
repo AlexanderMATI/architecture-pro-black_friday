@@ -1,0 +1,44 @@
+@startuml
+!include <C4/C4_Component>
+
+skinparam {
+    backgroundColor #FAFAFA
+    roundCorner 20
+    shadowing true
+    wrapWidth 400
+}
+
+Container(app_services, "Микросервисы", "Java/Go/Node.js", "Заказы, Каталог, Корзина")
+
+System_Boundary(router_layer, "Query Router Layer") {
+    Component(mongos_cluster, "MongoDB Routers", "mongos (3 узла)", "Маршрутизация запросов к шардам")
+}
+
+System_Boundary(data_layer, "Data Layer (Шардированный кластер)") {
+
+    System_Boundary(config_servers, "Config Servers") {
+        ComponentDb(cfg, "Config Servers", "MongoDB", "Метаданные кластера (3 узла)")
+    }
+
+    System_Boundary(shard_orders, "Shard 1: Orders") {
+        ComponentDb(orders, "Orders Replica Set", "MongoDB", "Заказы (шард-ключ: customer_id)")
+    }
+
+    System_Boundary(shard_products, "Shard 2: Products") {
+        ComponentDb(products, "Products Replica Set", "MongoDB", "Товары (шард-ключ: category)")
+    }
+
+    System_Boundary(shard_carts, "Shard 3: Carts") {
+        ComponentDb(carts, "Carts Replica Set", "MongoDB", "Корзины (шард-ключ: session_id)")
+    }
+}
+
+Rel(app_services, mongos_cluster, "Запросы", "MongoDB Protocol")
+
+Rel(mongos_cluster, cfg, "Чтение метаданных", "MongoDB Protocol")
+
+Rel(mongos_cluster, orders, "История заказов, создание", "Targeted queries")
+Rel(mongos_cluster, products, "Поиск по категориям", "Targeted queries")
+Rel(mongos_cluster, carts, "Управление корзиной", "Targeted queries")
+
+@enduml
