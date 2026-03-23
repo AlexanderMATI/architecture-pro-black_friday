@@ -1,0 +1,117 @@
+name: sharding-repl-cache
+
+services:
+  configsrv1:
+    image: mongo:latest
+    container_name: configsrv1
+    command: ["--configsvr", "--replSet", "configReplSet", "--port", "27019"]
+    volumes:
+      - configsrv1_data:/data/dbя
+
+  configsrv2:
+    image: mongo:latest
+    container_name: configsrv2
+    command: ["--configsvr", "--replSet", "configReplSet", "--port", "27019"]
+    volumes:
+      - configsrv2_data:/data/db
+
+  configsrv3:
+    image: mongo:latest
+    container_name: configsrv3
+    command: ["--configsvr", "--replSet", "configReplSet", "--port", "27019"]
+    volumes:
+      - configsrv3_data:/data/db
+
+  shard11:
+    image: mongo:latest
+    container_name: shard11
+    command: ["--shardsvr", "--replSet", "shard1ReplSet", "--port", "27018"]
+    volumes:
+      - shard11_data:/data/db
+
+  shard12:
+    image: mongo:latest
+    container_name: shard12
+    command: ["--shardsvr", "--replSet", "shard1ReplSet", "--port", "27018"]
+    volumes:
+      - shard12_data:/data/db
+
+  shard13:
+    image: mongo:latest
+    container_name: shard13
+    command: ["--shardsvr", "--replSet", "shard1ReplSet", "--port", "27018"]
+    volumes:
+      - shard13_data:/data/db
+
+  shard21:
+    image: mongo:latest
+    container_name: shard21
+    command: ["--shardsvr", "--replSet", "shard2ReplSet", "--port", "27020"] 
+    volumes:
+      - shard21_data:/data/db
+
+  shard22:
+    image: mongo:latest
+    container_name: shard22
+    command: ["--shardsvr", "--replSet", "shard2ReplSet", "--port", "27020"] 
+    volumes:
+      - shard22_data:/data/db
+
+
+  shard23:
+    image: mongo:latest
+    container_name: shard23
+    command: ["--shardsvr", "--replSet", "shard2ReplSet", "--port", "27020"] 
+    volumes:
+      - shard23_data:/data/db
+
+  mongos:
+    image: mongo:latest
+    container_name: mongos
+    command: >
+      mongos --configdb configReplSet/configsrv1:27019,configsrv2:27019,configsrv3:27019 --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - configsrv1
+      - configsrv2
+      - configsrv3
+      - shard11
+      - shard12
+      - shard13
+      - shard21
+      - shard22
+      - shard23
+
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+    - "6379:6379"
+
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URL: "mongodb://mongos:27017"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - mongos
+      - redis
+
+volumes:
+  configsrv1_data:
+  configsrv2_data:
+  configsrv3_data:
+  shard11_data:
+  shard12_data:
+  shard13_data:
+  shard21_data:
+  shard22_data:
+  shard23_data:
